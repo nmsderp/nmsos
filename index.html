@@ -98,7 +98,7 @@
                         if (command === ':wq') {
                             var content = term.export_view();
                             if (content) {
-                                file.content = content.export_view_data;
+                                file.content = content.export_view_data.text; // Corrected access to exported text
                             }
                             term.pop();
                         } else if (command === ':q') {
