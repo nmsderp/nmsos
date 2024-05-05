@@ -27,7 +27,6 @@
 
 <script>
     $(document).ready(function() {
-        // Virtual File System
         var fileSystem = {
             '/': {
                 type: 'dir',
@@ -65,8 +64,10 @@
                 var path = command.substring(4);
                 var file = resolvePath(path);
                 if (file && file.type === 'file') {
-                    this.echo(String(file.content));
+                    // Display the contents of the file
+                    this.echo(file.content);
                 } else {
+                    // File not found error
                     this.error('File not found');
                 }
             } else if (command.startsWith("touch ")) {
