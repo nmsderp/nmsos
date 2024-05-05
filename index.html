@@ -42,15 +42,24 @@ $(document).ready(function() {
             });
             $('#terminal').append(iframe);
             this.set_position(cursorPosition[0] + 1, 0); 
+        } else if (command.startsWith("fetch ")) {
+            var url = command.substring(6);
+            var terminal = this;
+            $.get(url, function(data) {
+                terminal.echo(data);
+            }).fail(function() {
+                terminal.echo("Failed to fetch data from " + url);
+            });
         } else if (command !== '') {
            this.echo('The command "' + command + '" may not exist, type help to view a full list of commands.');
         }
     }, {
         greetings: 'nmsos',
         name: 'terminal',
-        prompt: 'user@cool-page $ '
+        prompt: 'user@nmsos $ '
     });
 });
+
 
 
 </script>
