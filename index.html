@@ -104,13 +104,21 @@
                             term.pop();
                         }
                     }, {
-                        prompt: 'vim $ ',
+                        prompt: 'nmsedit $ ',
                         exit: false
                     });
                     this.echo(file.content, {format: 'html', raw: true}).export_view();
                 } else {
                     this.error('File not found');
                 }
+            } else if (command.startsWith("help")) {
+                this.echo("Available commands:");
+                this.echo("  - echo [text]: Echo the provided text.");
+                this.echo("  - ls [path]: List files and directories in the specified path (default is root).");
+                this.echo("  - cat [file]: Display the contents of the specified file.");
+                this.echo("  - touch [file]: Create a new file.");
+                this.echo("  - edit [file]: Edit the contents of the specified file using a vim-like interface.");
+                this.echo("  - help: Display this help message.");
             } else if (command !== '') {
                this.echo('The command "' + command + '" may not exist, type help to view a full list of commands.');
             }
