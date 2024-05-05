@@ -1,69 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terminal Page</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.terminal/2.19.0/css/jquery.terminal.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.terminal/2.19.0/js/jquery.terminal.min.js"></script>
-<style>
-    html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-    }
-    #terminal {
-        width: 100%;
-        height: 100%;
-    }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Page</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.terminal/2.19.0/css/jquery.terminal.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.terminal/2.19.0/js/jquery.terminal.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #terminal {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
 
 <div id="terminal"></div>
 
 <script>
-$(document).ready(function() {
-    $('#terminal').terminal(function(command) {
-        if (command.startsWith("echo ")) {
-            var textToEcho = command.substring(5);
-            this.echo(textToEcho);
-        } else if (command.startsWith("iframe ")) {
-            var url = command.substring(7);
-            var cursorPosition = this.get_position();
-            var iframe = $('<iframe>', {
-                src: url,
-                frameborder: 0,
-                width: '100%',
-                height: '300px'
-            });
-            $('#terminal').append(iframe);
-            this.set_position(cursorPosition[0] + 1, 0); 
-        } else if (command.startsWith("fetch ")) {
-            var url = command.substring(6);
-            var terminal = this;
-            $.get(url, function(data) {
-                terminal.echo(data);
-            }).fail(function() {
-                terminal.echo("Failed to fetch data from " + url);
-            });
-        } else if (command !== '') {
-           this.echo('The command "' + command + '" may not exist, type help to view a full list of commands.');
+    $(document).ready(function() {
+        // Virtual File System
+        var fileSystem = {
+            '/': {
+                type: 'dir',
+                contents: {
+                    'file1.txt': {
+                        type: 'file',
+                        content: 'This is file 1 content.'
+                    },
+                    'file2.txt': {
+                        type: 'file',
+                        content: 'This is file 2 content.'
+                    },
+                    'file3.txt': {
+                        type: 'file',
+                        content: 'This is file 3 content.'
+                    }
+                }
+            }
+        };
+
+        $('#terminal').terminal(function(command) {
+            if (command.startsWith("echo ")) {
+                var textToEcho = command.substring(5);
+                this.echo(textToEcho);
+            } else if (command.startsWith("ls")) {
+                var path = command.split(' ')[1] || '/';
+                var directory = resolvePath(path);
+                if (directory && directory.type === 'dir') {
+                    var files = Object.keys(directory.contents);
+                    this.echo(files.join(' '));
+                } else {
+                    this.error('Directory not found');
+                }
+            } else if (command.startsWith("cat ")) {
+                var path = command.substring(4);
+                var file = resolvePath(path);
+                if (file && file.type === 'file') {
+                    this.echo(String(file.content));
+                } else {
+                    this.error('File not found');
+                }
+            } else if (command.startsWith("touch ")) {
+                var path = command.substring(6);
+                var parts = path.split('/');
+                var fileName = parts.pop();
+                var directoryPath = parts.join('/');
+                var directory = resolvePath(directoryPath);
+                if (directory && directory.type === 'dir') {
+                    if (!directory.contents[fileName]) {
+                        directory.contents[fileName] = {
+                            type: 'file',
+                            content: ''
+                        };
+                        this.echo('File ' + fileName + ' created successfully.');
+                    } else {
+                        this.error('File already exists.');
+                    }
+                } else {
+                    this.error('Directory not found.');
+                }
+            } else if (command.startsWith("edit ")) {
+                var path = command.substring(5);
+                var file = resolvePath(path);
+                if (file && file.type === 'file') {
+                    var terminal = this;
+                    this.push(function(command, term) {
+                        if (command === ':wq') {
+                            var content = term.export_view();
+                            if (content) {
+                                file.content = content.export_view_data;
+                            }
+                            term.pop();
+                        } else if (command === ':q') {
+                            term.pop();
+                        }
+                    }, {
+                        prompt: 'vim $ ',
+                        exit: false
+                    });
+                    this.echo(file.content, {format: 'html', raw: true}).export_view();
+                } else {
+                    this.error('File not found');
+                }
+            } else if (command !== '') {
+               this.echo('The command "' + command + '" may not exist, type help to view a full list of commands.');
+            }
+        }, {
+            greetings: 'Welcome to nmsos!',
+            name: 'terminal',
+            prompt: 'user@nmsos $ '
+        });
+
+
+        function resolvePath(path) {
+            var parts = path.split('/');
+            var currentDir = fileSystem['/'];
+            for (var i = 0; i < parts.length; i++) {
+                var part = parts[i];
+                if (!part) continue;
+                if (currentDir.type !== 'dir') return null;
+                if (!currentDir.contents[part]) return null;
+                currentDir = currentDir.contents[part];
+            }
+            return currentDir;
         }
-    }, {
-        greetings: 'nmsos',
-        name: 'terminal',
-        prompt: 'user@nmsos $ '
     });
-});
-
-
-
 </script>
-
 
 </body>
 </html>
